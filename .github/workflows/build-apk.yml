@@ -1,1 +1,55 @@
 
+name: Build Ardhi Farm APK
+
+on: [push, workflow_dispatch]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Extract Ardhi Farm
+        run: |
+          unzip -o ArdhiFarm_GitHub_AutoBuild.zip -d ardhi_build
+          echo "Files extracted:"
+          find ardhi_build -maxdepth 3 -type f | head -100
+
+      - name: Find Android project
+        run: |
+          echo "Searching for settings.gradle.kts..."
+          find ardhi_build -name "settings.gradle.kts" -o -name "settings.gradle"
+
+      - name: Build APK
+        run: |
+          PROJECT_DIR=$(dirname "$(find ardhi_build -name "settings.gradle.kts" -o -name "settings.gradle" | head -1)")
+          echo "Project directory: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
+          gradle --no-daemon --stacktrace assembleDebug
+
+      - name: Find APK
+        run: |
+          find ardhi_build -name "*.apk" -type f
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArdhiFarm-APK
+          path: ardhi_build/**/*.apk
+          retention-days: 30
